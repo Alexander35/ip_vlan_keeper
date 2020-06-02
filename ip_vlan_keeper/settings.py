@@ -23,9 +23,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'yxaiq@&xe32n&8@(ng4)=-@)3euaocm=@rro7gqa26gwv02n)-'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+IP_VLAN_KEEPER_HOST_ADDRESS = os.environ.get('IP_VLAN_KEEPER_HOST_ADDRESS', '10.0.2.1')
+
+ALLOWED_HOSTS = [IP_VLAN_KEEPER_HOST_ADDRESS]
 
 
 # Application definition
@@ -78,19 +80,20 @@ WSGI_APPLICATION = 'ip_vlan_keeper.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
-DATABASES = {
+IP_VLAN_KEEPER_DB_NAME = os.environ.get('IP_VLAN_KEEPER_DB_NAME', 'ip_vlan_keeper')
+IP_VLAN_KEEPER_DB_USER_NAME = os.environ.get('IP_VLAN_KEEPER_DB_USER_NAME', 'ip_vlan_keeper')
+IP_VLAN_KEEPER_DB_PASSWORD = os.environ.get('IP_VLAN_KEEPER_DB_PASSWORD', 'ip_vlan_keeper')
 
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ip_vlan_keeper',
-        'USER': 'ip_vlan_keeper',
-        'PASSWORD': 'ip_vlan_keeper',
-        'HOST': '127.0.0.1',
+        'NAME': IP_VLAN_KEEPER_DB_NAME,
+        'USER': IP_VLAN_KEEPER_DB_USER_NAME,
+        'PASSWORD': IP_VLAN_KEEPER_DB_PASSWORD,
+        'HOST': '10.0.2.1',
         'PORT': '5432',
     }
-
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -129,6 +132,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

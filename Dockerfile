@@ -24,4 +24,5 @@ RUN usermod -a -G www-data root
 EXPOSE 8808
 EXPOSE 80
 
-ENTRYPOINT  cd ip_vlan_keeper_frontend && npm install && npm run build && mv build/* ../public && cd .. && ln -s /ip_vlan_keeper/ip_vlan_keeper_nginx.conf /etc/nginx/sites-enabled/ && rm -rf /etc/nginx/sites-enabled/default && /etc/init.d/nginx start && python manage.py makemigrations --noinput && python -u manage.py migrate --noinput && python -u manage.py createfirstuser && uwsgi --ini ip_vlan_keeper_uwsgi.ini --daemonize /ip_vlan_keeper/uwsgi.log && /bin/bash
+ENTRYPOINT  cd ip_vlan_keeper_frontend && npm install && npm run build && mv build/* ../public && cd .. && ln -s /ip_vlan_keeper/ip_vlan_keeper_nginx.conf /etc/nginx/sites-enabled/ && rm -rf /etc/nginx/sites-enabled/default && /etc/init.d/nginx start && python manage.py makemigrations --noinput && python -u manage.py migrate --noinput && python -u manage.py createfirstuser
+CMD uwsgi --ini ip_vlan_keeper_uwsgi.ini --daemonize /ip_vlan_keeper/uwsgi.log

@@ -1,0 +1,7 @@
+.empty/*
+keeper/__pycache__/*
+keeper/__pycache__/
+migrations/*
+playbook.retry
+playbook.yml
+inventory.yml

@@ -53,17 +53,18 @@
 
 ## Пеерд разворачиванием
 
-1. Находим в этом репозитарии в корневом катологе файл inventory.yml и исправляем значение ansible_host на айпи адрес сервера,  ansible_user - логин пользователя на сервере, ansible_password - пароль от сервера . Эти данные нужны для подключения по ssh 
-``` ip_vlan_keeper_server:
+1. Находим в этом репозитарии в корневом катологе файл .inventory.yml и исправляем значение ansible_host на айпи адрес сервера,  ansible_user - логин пользователя на сервере, ansible_password - пароль от сервера . Эти данные нужны для подключения по ssh. Переименовываем .inventory.yml в inventory.yml
+```
+ip_vlan_keeper_server:
   hosts:
       server1:
         ansible_connection: ssh
-        ansible_host: "IP_OF_THE_SERVER"
+        ansible_host: "SERVER_IP"
         ansible_user: "SERVER_USER"
         ansible_password: "SERVER_USER_PASSWORD"
 ```
 
-2. В файле playbook.yml меняем значение переменной clone_to на каталог, где будет временно размещаться репозитарий проекта на сервере. У пользователя из предыдущего пункта должны быть все права на этот каталог.
+2. В файле .playbook.yml меняем значение переменной clone_to на каталог, где будет временно размещаться репозитарий проекта на сервере. У пользователя из предыдущего пункта должны быть все права на этот каталог. Переименовываем .playbook.yml в playbook.yml
 ```
 --- 
   - name: Deploy
@@ -71,14 +72,18 @@
     gather_facts: false
     hosts: all
     vars:
-      clone_to: FOLDER_WITH_OUR_REPO_ON_THE_SERVER
+      # <<-- symbol '/' in the end is important!
+      clone_to: /path/to/temp/repo/folder/
       git_url: https://github.com/Alexander35/ip_vlan_keeper.git
   
     tasks:
       - git:
-          repo: https://github.com/Alexander35/ip_vlan_keeper.git
-          dest: "{{ clone_to }}"
+          repo: {{ git_url }}
+          dest: {{ clone_to }}
           update: yes
+
+      - name: build image
+        command: docker build --tag ip_vlan_keeper {{clone_to}}
 
       - block:
         - name: stop container
@@ -89,11 +94,8 @@
 
         ignore_errors: yes
 
-      - name: build image
-        command: docker build --tag ip_vlan_keeper {{clone_to}}
-
       - name: run image
-        command: docker run -d  --publish 8808:8808 --publish 80:80 --name ip_v_k  ip_vlan_keeper
+        command: docker run -d --env-file {{clone_to}}env.txt --publish 8808:8808 --publish 80:80 --name ip_v_k  ip_vlan_keeper
 ```
 
 ## Разворачивание
@@ -105,10 +107,11 @@ inventory.yml и playbook.yml - это файлы, описанные выше
 Записываем задания для бэкапа в cron на сервере
 ``` crontab -e ```
 
-``` 23 23  */10  *  *  echo SERVER_USER_PASSWORD | sudo -S -u postgres pg_dump ip_vlan_keeper > /backup/folder/server/ip_vlan_keeper_"$(date)".sql && sshpass -p "VAULT_USER_PASSWORD" rsync -avz --remove-source-files /backup/folder/server/ VAULT_USER@VAULT_IP:/backup/folder/vault```
+``` 23 23  */10  *  *  echo SERVER_USER_PASSWORD | sudo -S -u postgres pg_dump ip_vlan_keeper > /backup/folder/server/ip_vlan_keeper_"$(date)".sql && sshpass -p "VAULT_USER_PASSWORD" rsync -avz --remove-source-files /backup/folder/server/ VAULT_USER@VAULT_IP:/backup/folder/vault ```
 
 Чтобы удалить лишние файлы в хранилище рекомендуется в крон на хранилище добавить 
-```  23 23  21  *  *   find . -type f -not -name '*20*' -delete```
+```  23 23  21  *  *   find /backup/folder/vault -type f -not -name '*20*' -delete ```
+```  23 23  11  *  *   find /backup/folder/vault -type f -not -name '*10*' -delete ```
 
 ## Восстановление БД
 Чтобы восстановить БД из бэкапа. нужно закачать один файл с бэкапом с хранилища обратно на сервер

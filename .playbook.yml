@@ -1,0 +1,30 @@
+--- 
+  - name: Deploy
+    connection: ssh
+    gather_facts: false
+    hosts: all
+    vars:
+      # <<-- symbol '/' in the end is important!
+      clone_to: /path/to/temp/repo/folder/
+      git_url: https://github.com/Alexander35/ip_vlan_keeper.git
+  
+    tasks:
+      - git:
+          repo: {{ git_url }}
+          dest: {{ clone_to }}
+          update: yes
+
+      - name: build image
+        command: docker build --tag ip_vlan_keeper {{clone_to}}
+
+      - block:
+        - name: stop container
+          command: docker stop ip_v_k
+
+        - name: rm container
+          command: docker rm ip_v_k
+
+        ignore_errors: yes
+
+      - name: run image
+        command: docker run -d --env-file {{clone_to}}env.txt --publish 8808:8808 --publish 80:80 --name ip_v_k  ip_vlan_keeper

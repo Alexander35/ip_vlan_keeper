@@ -1,0 +1,7 @@
+ip_vlan_keeper_server:
+  hosts:
+      server1:
+        ansible_connection: ssh
+        ansible_host: "SERVER_IP"
+        ansible_user: "SERVER_USER"
+        ansible_password: "SERVER_USER_PASSWORD"

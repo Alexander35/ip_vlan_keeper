@@ -13,6 +13,7 @@
 ``` sudo su postgres ```
 ``` psql ```
 ``` CREATE USER ip_vlan_keeper; ```
+``` ALTER USER ip_vlan_keeper PASSWORD 'ip_vlan_keeper'; ```
 ``` CREATE DATABASE ip_vlan_keeper; ```
 ``` GRANT ALL ON DATABASE ip_vlan_keeper TO ip_vlan_keeper; ```
 
@@ -85,7 +86,33 @@ ip_vlan_keeper_server:
         ansible_password: "SERVER_USER_PASSWORD"
 ```
 
-5. Переименовываем .playbook.yml в playbook.yml. В файле .playbook.yml меняем значение переменной clone_to на каталог, где будет временно размещаться репозитарий проекта на сервере или оставить без изменений. У пользователя из предыдущего пункта должны быть все права на этот каталог.
+5. Переименовываем .playbook.yml в playbook.yml. В файле .playbook.yml.
+Меняем значения переменных на нужные
+
+папка для временных файлов проекта на сервере
+```
+clone_to: "/tmp/ip_vlan_keeper_repo/"
+```
+адрес сервера, используется на бэкенде для БД
+```
+ip_vlan_keeper_host_address: "{{ansible_host}}"
+```
+адрес сервера, используется на фронтенде для указания бэкенда
+```
+react_app_ip_vlan_keeper_host_address: "{{ansible_host}}"
+```
+далее имя БД, логин пользователя БД, пароль БД,  из 1 шага предустановок на сервере
+```
+ip_vlan_keeper_db_name: "ip_vlan_keeper"
+ip_vlan_keeper_db_user_name: "ip_vlan_keeper"
+ip_vlan_keeper_db_password: "ip_vlan_keeper"
+```
+далее имя, мэйл, пароль суперпользователя для разворачиваемого приложения
+```
+ip_vlan_keeper_admin_name: "admin"
+ip_vlan_keeper_admin_email: "ad@m.in"
+ip_vlan_keeper_admin_password: "admin"
+```
 ```
 --- 
   - name: Deploy
@@ -96,6 +123,7 @@ ip_vlan_keeper_server:
       clone_to: "/tmp/ip_vlan_keeper_repo/"
       git_url: "https://github.com/Alexander35/ip_vlan_keeper.git"
       ip_vlan_keeper_host_address: "{{ansible_host}}"
+      react_app_ip_vlan_keeper_host_address: "{{ansible_host}}"
       ip_vlan_keeper_db_name: "ip_vlan_keeper"
       ip_vlan_keeper_db_user_name: "ip_vlan_keeper"
       ip_vlan_keeper_db_password: "ip_vlan_keeper"
@@ -103,8 +131,6 @@ ip_vlan_keeper_server:
       ip_vlan_keeper_admin_email: "ad@m.in"
       ip_vlan_keeper_admin_password: "admin"
 
-
-  
     tasks:
       - git:
           repo: "{{ git_url }}"
@@ -112,7 +138,10 @@ ip_vlan_keeper_server:
           update: yes
 
       - name: build image
-        command: docker build --tag ip_vlan_keeper {{clone_to}}
+        command: >
+          docker build
+          --build-arg REACT_APP_IP_VLAN_KEEPER_HOST_ADDRESS={{react_app_ip_vlan_keeper_host_address}}
+          --tag ip_vlan_keeper {{clone_to}}
 
       - block:
         - name: stop container

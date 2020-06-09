@@ -1,7 +1,9 @@
 FROM python:3.6-slim
 
+ARG REACT_APP_IP_VLAN_KEEPER_HOST_ADDRESS
+
 RUN apt-get update
-Run apt-get install -y apt-utils gcc apt-utils python3-psycopg2 libpq-dev nginx python-dev git nodejs npm
+RUN apt-get install -y apt-utils gcc apt-utils python3-psycopg2 libpq-dev nginx python-dev git nodejs npm
 
 RUN mkdir -p /ip_vlan_keeper
 
@@ -21,7 +23,7 @@ RUN echo yes | python manage.py collectstatic
 
 RUN usermod -a -G www-data root
 
-RUN cd ip_vlan_keeper_frontend && npm install && npm run build && mv build/* ../public && cd ..
+RUN cd ip_vlan_keeper_frontend && npm install && REACT_APP_IP_VLAN_KEEPER_HOST_ADDRESS=$REACT_APP_IP_VLAN_KEEPER_HOST_ADDRESS npm run build && mv build/* ../public && cd ..
 
 EXPOSE 8808
 EXPOSE 80

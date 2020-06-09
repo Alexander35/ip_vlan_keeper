@@ -7,6 +7,7 @@
       clone_to: "/tmp/ip_vlan_keeper_repo/"
       git_url: "https://github.com/Alexander35/ip_vlan_keeper.git"
       ip_vlan_keeper_host_address: "{{ansible_host}}"
+      react_app_ip_vlan_keeper_host_address: "{{ansible_host}}"
       ip_vlan_keeper_db_name: "ip_vlan_keeper"
       ip_vlan_keeper_db_user_name: "ip_vlan_keeper"
       ip_vlan_keeper_db_password: "ip_vlan_keeper"
@@ -14,8 +15,6 @@
       ip_vlan_keeper_admin_email: "ad@m.in"
       ip_vlan_keeper_admin_password: "admin"
 
-
-  
     tasks:
       - git:
           repo: "{{ git_url }}"
@@ -23,7 +22,10 @@
           update: yes
 
       - name: build image
-        command: docker build --tag ip_vlan_keeper {{clone_to}}
+        command: >
+          docker build
+          --build-arg REACT_APP_IP_VLAN_KEEPER_HOST_ADDRESS={{react_app_ip_vlan_keeper_host_address}}
+          --tag ip_vlan_keeper {{clone_to}}
 
       - block:
         - name: stop container

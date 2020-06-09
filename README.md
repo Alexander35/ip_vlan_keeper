@@ -1,5 +1,6 @@
 
 # Как развернуть ip_vlan_keeper на сервере
+Рекомендуется использовать на сервере и на контрольном хосте Debian 10
 
 ## Установить на сервере (выполняется один раз при смене сервера) 
 
@@ -30,10 +31,22 @@
 ``` sudo systemctl restart postgresql ```
 
 ### 2. docker
-``` sudo apt-get install docker ``` 
+смотри актульную информацию на https://docs.docker.com/engine/install/
+```
+sudo apt-get remove docker docker-engine docker.io containerd runc
+sudo apt-get update
+sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+```
 
 Разрешить запускаться от простого пользователя
 ``` usermod -a -G docker $USER ```
+потом убеждаемся что группа добавилась
+``` groups ```
+если нет. то прсото обновляем переменные окружения или перезаходим на сервер.
 
 ### 3. git
 ```sudo apt-get install git ```
@@ -52,8 +65,16 @@
 ``` sudo apt-get install sshpass ```
 
 ## Пеерд разворачиванием
+1. Устанавливаем на контрольный хост git
+```sudo apt-get install git ```
 
-1. Находим в этом репозитарии в корневом катологе файл .inventory.yml и исправляем значение ansible_host на айпи адрес сервера,  ansible_user - логин пользователя на сервере, ansible_password - пароль от сервера . Эти данные нужны для подключения по ssh. Переименовываем .inventory.yml в inventory.yml
+2. Клонируем этот репозитарий на контрольный хост
+``` git clone https://github.com/Alexander35/ip_vlan_keeper.git ```
+
+3. переходим в папку проекта
+``` cd ip_vlan_keeper ```
+
+4. Находим в этом репозитарии в корневом катологе файл .inventory.yml и переименовываем .inventory.yml в inventory.yml. Исправляем значение ansible_host на айпи адрес сервера,  ansible_user - логин пользователя на сервере, ansible_password - пароль от сервера . Эти данные нужны для подключения по ssh.
 ```
 ip_vlan_keeper_server:
   hosts:
@@ -64,7 +85,7 @@ ip_vlan_keeper_server:
         ansible_password: "SERVER_USER_PASSWORD"
 ```
 
-2. В файле .playbook.yml меняем значение переменной clone_to на каталог, где будет временно размещаться репозитарий проекта на сервере. У пользователя из предыдущего пункта должны быть все права на этот каталог. Переименовываем .playbook.yml в playbook.yml
+5. Переименовываем .playbook.yml в playbook.yml. В файле .playbook.yml меняем значение переменной clone_to на каталог, где будет временно размещаться репозитарий проекта на сервере или оставить без изменений. У пользователя из предыдущего пункта должны быть все права на этот каталог.
 ```
 --- 
   - name: Deploy
@@ -72,14 +93,22 @@ ip_vlan_keeper_server:
     gather_facts: false
     hosts: all
     vars:
-      # <<-- symbol '/' in the end is important!
-      clone_to: /path/to/temp/repo/folder/
-      git_url: https://github.com/Alexander35/ip_vlan_keeper.git
+      clone_to: "/tmp/ip_vlan_keeper_repo/"
+      git_url: "https://github.com/Alexander35/ip_vlan_keeper.git"
+      ip_vlan_keeper_host_address: "{{ansible_host}}"
+      ip_vlan_keeper_db_name: "ip_vlan_keeper"
+      ip_vlan_keeper_db_user_name: "ip_vlan_keeper"
+      ip_vlan_keeper_db_password: "ip_vlan_keeper"
+      ip_vlan_keeper_admin_name: "admin"
+      ip_vlan_keeper_admin_email: "ad@m.in"
+      ip_vlan_keeper_admin_password: "admin"
+
+
   
     tasks:
       - git:
-          repo: {{ git_url }}
-          dest: {{ clone_to }}
+          repo: "{{ git_url }}"
+          dest: "{{ clone_to }}"
           update: yes
 
       - name: build image
@@ -95,10 +124,28 @@ ip_vlan_keeper_server:
         ignore_errors: yes
 
       - name: run image
-        command: docker run -d --env-file {{clone_to}}env.txt --publish 8808:8808 --publish 80:80 --name ip_v_k  ip_vlan_keeper
+        command: >
+          docker run -d -e IP_VLAN_KEEPER_HOST_ADDRESS={{ip_vlan_keeper_host_address}}
+          -e IP_VLAN_KEEPER_DB_NAME={{ip_vlan_keeper_db_name}}
+          -e IP_VLAN_KEEPER_DB_USER_NAME={{ip_vlan_keeper_db_user_name}}
+          -e IP_VLAN_KEEPER_DB_PASSWORD={{ip_vlan_keeper_db_password}}
+          -e IP_VLAN_KEEPER_ADMIN_NAME={{ip_vlan_keeper_admin_name}}
+          -e IP_VLAN_KEEPER_ADMIN_EMAIL={{ip_vlan_keeper_admin_email}}
+          -e IP_VLAN_KEEPER_ADMIN_PASSWORD={{ip_vlan_keeper_admin_password}}
+          --publish 8808:8808 --publish 80:80 --name ip_v_k  ip_vlan_keeper
 ```
 
 ## Разворачивание
+1. Установить ansible на хосте, с которого предполагается деплой.
+за подробной информацией https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html
+
+```
+sudo add-apt-repository "deb http://ppa.launchpad.net/ansible/ansible/ubuntu trusty main"
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 93C4A3FD7BB9C367
+sudo apt update
+sudo apt install ansible
+```
+
 При помощи ansible разворачиваем проект на сервере
 ``` ansible-playbook -i inventory.yml -vvvv playbook.yml ```
 inventory.yml и playbook.yml - это файлы, описанные выше

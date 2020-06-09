@@ -4,14 +4,22 @@
     gather_facts: false
     hosts: all
     vars:
-      # <<-- symbol '/' in the end is important!
-      clone_to: /path/to/temp/repo/folder/
-      git_url: https://github.com/Alexander35/ip_vlan_keeper.git
+      clone_to: "/tmp/ip_vlan_keeper_repo/"
+      git_url: "https://github.com/Alexander35/ip_vlan_keeper.git"
+      ip_vlan_keeper_host_address: "{{ansible_host}}"
+      ip_vlan_keeper_db_name: "ip_vlan_keeper"
+      ip_vlan_keeper_db_user_name: "ip_vlan_keeper"
+      ip_vlan_keeper_db_password: "ip_vlan_keeper"
+      ip_vlan_keeper_admin_name: "admin"
+      ip_vlan_keeper_admin_email: "ad@m.in"
+      ip_vlan_keeper_admin_password: "admin"
+
+
   
     tasks:
       - git:
-          repo: {{ git_url }}
-          dest: {{ clone_to }}
+          repo: "{{ git_url }}"
+          dest: "{{ clone_to }}"
           update: yes
 
       - name: build image
@@ -27,4 +35,12 @@
         ignore_errors: yes
 
       - name: run image
-        command: docker run -d --env-file {{clone_to}}env.txt --publish 8808:8808 --publish 80:80 --name ip_v_k  ip_vlan_keeper
+        command: >
+          docker run -d -e IP_VLAN_KEEPER_HOST_ADDRESS={{ip_vlan_keeper_host_address}}
+          -e IP_VLAN_KEEPER_DB_NAME={{ip_vlan_keeper_db_name}}
+          -e IP_VLAN_KEEPER_DB_USER_NAME={{ip_vlan_keeper_db_user_name}}
+          -e IP_VLAN_KEEPER_DB_PASSWORD={{ip_vlan_keeper_db_password}}
+          -e IP_VLAN_KEEPER_ADMIN_NAME={{ip_vlan_keeper_admin_name}}
+          -e IP_VLAN_KEEPER_ADMIN_EMAIL={{ip_vlan_keeper_admin_email}}
+          -e IP_VLAN_KEEPER_ADMIN_PASSWORD={{ip_vlan_keeper_admin_password}}
+          --publish 8808:8808 --publish 80:80 --name ip_v_k  ip_vlan_keeper

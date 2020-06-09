@@ -83,6 +83,7 @@ WSGI_APPLICATION = 'ip_vlan_keeper.wsgi.application'
 IP_VLAN_KEEPER_DB_NAME = os.environ.get('IP_VLAN_KEEPER_DB_NAME', 'ip_vlan_keeper')
 IP_VLAN_KEEPER_DB_USER_NAME = os.environ.get('IP_VLAN_KEEPER_DB_USER_NAME', 'ip_vlan_keeper')
 IP_VLAN_KEEPER_DB_PASSWORD = os.environ.get('IP_VLAN_KEEPER_DB_PASSWORD', 'ip_vlan_keeper')
+IP_VLAN_KEEPER_HOST_ADDRESS = os.environ.get('IP_VLAN_KEEPER_HOST_ADDRESS', '127.0.0.1')
 
 DATABASES = {
     'default': {
@@ -90,7 +91,7 @@ DATABASES = {
         'NAME': IP_VLAN_KEEPER_DB_NAME,
         'USER': IP_VLAN_KEEPER_DB_USER_NAME,
         'PASSWORD': IP_VLAN_KEEPER_DB_PASSWORD,
-        'HOST': '10.0.2.1',
+        'HOST': IP_VLAN_KEEPER_HOST_ADDRESS,
         'PORT': '5432',
     }
 }

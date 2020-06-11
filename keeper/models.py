@@ -66,11 +66,13 @@ class Ip(models.Model):
     Device_interface = models.ForeignKey(DevInterface, on_delete=models.CASCADE)
     Description = models.TextField()
     IntIp =  models.CharField(max_length=100)
+    Owner = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self):
         self.IntIp = '{}'.format( struct.unpack("!I", socket.inet_aton(self.Name))[0])
+        self.Owner = self.Network.Owner
         super(Ip, self).save()
 
     def __str__(self):

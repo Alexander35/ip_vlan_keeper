@@ -13,7 +13,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['username']
 
 class DeviceSerializer(serializers.ModelSerializer):
-    # Device_interface = DevInterfaceSerializer()
     class Meta:
         model = Device
         exclude = ['created_at']
@@ -43,6 +42,7 @@ class NetSerializer(serializers.ModelSerializer):
 class IpSerializer(serializers.ModelSerializer):
     Network = NetSerializer()
     Device_interface = DevInterfaceSerializer()
+    Owner = UserSerializer()
     class Meta:
         model = Ip
         exclude = ['created_at', 'IntIp']

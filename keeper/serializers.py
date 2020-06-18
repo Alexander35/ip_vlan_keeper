@@ -6,6 +6,7 @@ from .models import Vlan
 from .models import Ip
 from .models import Log
 from .models import Net
+from .models import Ip_pool
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,6 +38,12 @@ class NetSerializer(serializers.ModelSerializer):
     Owner = UserSerializer()
     class Meta:
         model = Net
+        exclude = ['created_at', 'IntNet']
+
+class Ip_poolSerializer(serializers.ModelSerializer):
+    Owner = UserSerializer()
+    class Meta:
+        model = Ip_pool
         exclude = ['created_at', 'IntNet']
 
 class IpSerializer(serializers.ModelSerializer):

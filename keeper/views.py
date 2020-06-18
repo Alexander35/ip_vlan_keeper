@@ -6,6 +6,7 @@ from .models import Vlan
 from .models import Ip
 from .models import Log
 from .models import Net
+from .models import Ip_pool
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -16,6 +17,7 @@ from .serializers import VlanSerializer
 from .serializers import IpSerializer
 from .serializers import LogSerializer
 from .serializers import NetSerializer
+from .serializers import Ip_poolSerializer
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.authtoken.models import Token
@@ -24,9 +26,23 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import AllowAny
 import socket
 import struct
+import datetime
 
 def ip_included_in_net(ip, network):
     return ipaddress.ip_address(ip) in ipaddress.ip_network(network)
+
+def network_intercections_ckeck(network, networks):
+    for net in networks:
+        try:
+            net = ipaddress.ip_network(net)
+            network = ipaddress.ip_network(network)
+            if net.overlaps(network) is True:
+                return net
+        except Exception as e:
+            print("e {}".format(e))
+            # TODO write it to Log as Notice
+
+    return True
 
 # @csrf_exempt
 @api_view(["POST"])
@@ -46,7 +62,8 @@ def login(request):
                     status=status.HTTP_200_OK)
 
 class GetAllNamesViewSet(viewsets.ViewSet):
-    queryset =  { 
+    queryset =  {
+        "Pool": Ip_pool.objects.values_list('Name', flat=True).order_by('IntNet'),
         "Network": Net.objects.values_list('Name', flat=True).order_by('IntNet'),
         "Device": Device.objects.values_list('Name', flat=True).order_by('Name'),
         "Device_interface": DevInterface.objects.values_list('Name', flat=False).order_by('Name'),
@@ -56,6 +73,7 @@ class GetAllNamesViewSet(viewsets.ViewSet):
 
     def list(self, request):
         self.queryset =  {
+            "Pool": Ip_pool.objects.values_list('Name', flat=True).order_by('IntNet'),
             "Network": Net.objects.values_list('Name', flat=True).order_by('IntNet'),
             "Device": Device.objects.values_list('Name', flat=True).order_by('Name'),
             "Device_interface": DevInterface.objects.values_list('Name', flat=False).order_by('Name'),
@@ -144,23 +162,94 @@ class DeviceViewSet(viewsets.ModelViewSet):
         response = self.destroy(request, Name)
         return response
 
+class Ip_poolViewSet(viewsets.ModelViewSet):
+    queryset = Ip_pool.objects.all().order_by('IntNet')
+    serializer_class = Ip_poolSerializer
+    lookup_field = 'Name'
+
+    def list(self, request):
+        self.queryset = Ip_pool.objects.all().order_by('IntNet')
+        serializer = self.get_serializer(self.queryset, many=True)
+        return Response(serializer.data)
+
+    def create(self, request):
+        self.queryset = Ip_pool.objects.all().order_by('IntNet')
+        Name = request.data['Name']
+        not_overlapped = network_intercections_ckeck(request.data['Name'], self.queryset)
+
+        if (not_overlapped is True):
+            try:
+                Owner = User.objects.get(username=request.data.get('Owner'))
+                ip_pool = Ip_pool(Name=Name, Description=request.data.get('Description',""), Owner=Owner)
+                ip_pool.save()
+
+                ips = Ip.objects.all().order_by('IntIp')
+                for ip in ips:
+                    if(ip_included_in_net(ip.Name, Name) is True):
+                        Ip.objects.filter(Name=ip.Name).update(Pool=ip_pool)
+
+                serializer = self.get_serializer(ip_pool, many=False)
+                return Response(serializer.data)
+            except Exception as e:
+                return Response({"Ip pool is not created" : '{}'.format(e)},
+                        status=status.HTTP_412_PRECONDITION_FAILED)
+        else:
+            return Response({"ip pool is not created " : 'ip pool {} overlaps {}'.format(not_overlapped, Name)},
+                    status=status.HTTP_412_PRECONDITION_FAILED)
+
+    def retrieve(self, request, Name=None):
+        try:
+            Name = request.data.get('Name', Name)
+            Name = str.replace(Name, "_", ".")
+            Name = str.replace(Name, "|", "/")
+            self.queryset = Ip_pool.objects.get(Name=Name)
+            serializer = self.get_serializer([self.queryset], many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response("An error occured when retrieve ip pool info: {}".format(e))
+
+    def partial_update(self, request, Name=None):
+        try:
+            Name = request.data.get('Name', Name)
+            ip_pool = Ip_pool.objects.filter(Name=Name).first()
+            Owner = User.objects.get(username=request.data.get('Owner', ip_pool.Owner.username))
+            ip_pool.Name = request.data.get('NewName', Name)
+            ip_pool.Description = request.data.get('Description', ip_pool.Description)
+            ip_pool.Owner = Owner
+
+            ip_pool.save()
+            serializer = self.get_serializer(ip_pool, many=False)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"Ip pool is not updated" : '{}'.format(e)},
+                    status=status.HTTP_412_PRECONDITION_FAILED)
+
+    def destroy(self, request, Name=None):
+        try:
+            Name = request.data.get('Name', Name)
+            Ip_pool.objects.filter(Name=Name).delete()
+            response = self.list(request)
+            return response
+        except Exception as e:
+            return Response({"Ip pool is not deleted" : '{}'.format(e)},
+                    status=status.HTTP_412_PRECONDITION_FAILED)
+
+    def put(self, request, Name=None):
+        response = self.update(request, Name)
+        return response
+
+    def patch(self, request, Name=None):
+        response = self.partial_update(request, Name)
+        return response
+
+    def delete(self, request, Name=None):
+        response = self.destroy(request, Name)
+        return response
+
 class NetViewSet(viewsets.ModelViewSet):
     queryset = Net.objects.all().order_by('IntNet')
     serializer_class = NetSerializer
     lookup_field = 'Name'
-
-    def network_intercections_ckeck(self, network):
-        for net in self.queryset:
-            try:
-                net = ipaddress.ip_network(net)
-                network = ipaddress.ip_network(network)
-                if net.overlaps(network) is True:
-                    return net
-            except Exception as e:
-                print("e {}".format(e))
-                # TODO write it to Log as Notice
-
-        return True
 
     @action(detail=True, methods=['get'])
     def free_addresses(self, request, Name=None):
@@ -204,7 +293,7 @@ class NetViewSet(viewsets.ModelViewSet):
         self.queryset = Net.objects.all().order_by('IntNet')
         Name = request.data['Name']
         Gateway = request.data.get('Gateway', "")
-        not_overlapped = self.network_intercections_ckeck(request.data['Name'])
+        not_overlapped = network_intercections_ckeck(request.data['Name'], self.queryset)
         
         try:
             gateway_included = ip_included_in_net(Gateway, Name)
@@ -503,13 +592,43 @@ class IpViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, Name=None):
         try:
+            is_pool = False
             Name = request.data.get("Name", Name)
+
+            if(str.startswith(Name, "Pool_")):
+                is_pool = True
+                Name = str.replace(Name, "Pool_", "")
+
             Name = str.replace(Name, "_", ".")
             Name = str.replace(Name, "|", "/")
 
-            self.queryset = Ip.objects.filter(Network=Name).order_by('IntIp')
-            serializer = self.get_serializer(self.queryset, many=True)
-            return Response(serializer.data)
+            if(is_pool is True):
+                pool = Ip_pool.objects.get(Name=Name)
+                user = User.objects.get(pk=1)
+
+                self.queryset = []
+                first = Ip(Name=pool.First,
+                           Pool=pool,
+                           Owner=user,
+                           updated_at=datetime.datetime.now(),
+                           Description="First_address_of_the_pool")
+                last = Ip(Name=pool.Last,
+                          Pool=pool,
+                          Owner=user,
+                          updated_at=datetime.datetime.now(),
+                          Description="Last_address_of_the_pool")
+
+                self.queryset = Ip.objects.filter(Pool=Name).order_by('IntIp')
+                first_ser = self.get_serializer([first], many=True)
+                serializer = self.get_serializer(self.queryset, many=True)
+                last_ser = self.get_serializer([last], many=True)
+                data = first_ser.data + serializer.data + last_ser.data
+
+                return Response(data=data)
+            else:
+                self.queryset = Ip.objects.filter(Network=Name).order_by('IntIp')
+                serializer = self.get_serializer(self.queryset, many=True)
+                return Response(serializer.data)
         except Exception as e:
             return Response("An error occured when retrieve IP adresses info: {}".format(e))
 

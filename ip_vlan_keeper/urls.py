@@ -21,6 +21,7 @@ from keeper import views
 router = routers.DefaultRouter()
 router.register(r'owner', views.UserViewSet)
 router.register(r'net', views.NetViewSet)
+router.register(r'ip_pool', views.Ip_poolViewSet)
 router.register(r'device', views.DeviceViewSet)
 router.register(r'device_interface', views.DevInterfaceViewSet)
 router.register(r'vlan', views.VlanViewSet)

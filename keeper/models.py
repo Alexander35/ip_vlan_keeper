@@ -60,9 +60,31 @@ class Net(models.Model):
     def __str__(self):
        return '{}'.format(self.Name)
 
+class Ip_pool(models.Model):
+    Name = models.CharField(max_length=100, primary_key=True)
+    First = models.CharField(max_length=100)
+    Last = models.CharField(max_length=100)
+    Description = models.TextField()
+    Owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    IntNet =  models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self):
+        net_addr = '{}'.format(ipaddress.ip_network(self.Name).network_address)
+        broadcast = '{}'.format(ipaddress.ip_network(self.Name).broadcast_address)
+        self.IntNet = '{}'.format( struct.unpack("!I", socket.inet_aton(net_addr))[0])
+        self.First = net_addr
+        self.Last = broadcast
+        super(Ip_pool, self).save()
+
+    def __str__(self):
+       return '{}'.format(self.Name)
+
 class Ip(models.Model): 
     Name = models.CharField(max_length=100, primary_key=True)
     Network = models.ForeignKey(Net, on_delete=models.CASCADE)
+    Pool = models.ForeignKey(Ip_pool, on_delete=models.SET_NULL, null=True)
     Device_interface = models.ForeignKey(DevInterface, on_delete=models.CASCADE)
     Description = models.TextField()
     IntIp =  models.CharField(max_length=100)

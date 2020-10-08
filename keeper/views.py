@@ -572,13 +572,14 @@ class IpViewSet(viewsets.ModelViewSet):
             Net_id = Net.objects.get(Name=request.data.get('Net'))
             Device_interface = DevInterface.objects.filter(Name=request.data.get('Device_interface')).first()
             Name = request.data['Name']
+            Owner = User.objects.get(username=request.data.get('Owner', Net_id.Owner.username))
 
             if ip_included_in_net(request.data['Name'], Net_id.Name):
 
                 int_ip = struct.unpack("!I", socket.inet_aton(Name))[0]
 
                 ip = Ip(Name=Name, IntIp=int_ip ,Description=request.data.get('Description',""), 
-                        Network=Net_id, Device_interface=Device_interface)
+                        Network=Net_id, Device_interface=Device_interface, Owner=Owner)
                 ip.save()
 
                 serializer = self.get_serializer(ip, many=False)

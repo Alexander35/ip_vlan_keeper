@@ -94,7 +94,7 @@ class Ip(models.Model):
 
     def save(self):
         self.IntIp = '{}'.format( struct.unpack("!I", socket.inet_aton(self.Name))[0])
-        self.Owner = self.Network.Owner
+        # self.Owner = self.Network.Owner
         super(Ip, self).save()
 
     def __str__(self):
